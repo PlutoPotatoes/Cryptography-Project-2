@@ -22,6 +22,21 @@
  * on success, return 0; else return -1
  */
 int stream(char *p, int l, FILE *fp){
+  char md5_buf[MD5_DIGEST_LENGTH];
+  int len = strlen(p) + 2 + MD5_DIGEST_LENGTH;
+  char *s = malloc(len+1);
+  int i=0;
+  MD5(p, strlen(p), md5_buf);
+  for (;;) {
+    sprintf(&s[MD5_DIGEST_LENGTH],"%02d%s",i, p);
+    memcpy(s, md5_buf, MD5_DIGEST_LENGTH);
+    MD5(s, len, md5_buf);
+    fwrite(md5_buf, 1, sizeof(md5_buf)>>1, stdout);
+    if (++i == 100) i = 0;
+  }
+  free(s);
+
+
   return 0; // FIXME
 }
 
