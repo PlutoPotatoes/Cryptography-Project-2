@@ -7,7 +7,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include "fns.h"
 
 void usage(){
@@ -20,7 +19,27 @@ void usage(){
 }
 
 int main(int argc, char *argv[]){
-  usage();
-  int 
+  char *passphrase = "test123";
+  int num_bytes = 64;  // Number of bytes to generate
+
+  FILE *fp = fopen("stream_output.bin", "wb");
+
+  if (!fp) {
+      perror("Error opening file");
+      return 1;
+  }
+
+  if (stream(passphrase, num_bytes, fp) != 0) {
+      fprintf(stderr, "Stream generation failed.\n");
+      fclose(fp);
+      return 1;
+  }
+
+  fclose(fp);
+  printf("Stream output written to stream_output.bin\n");
   return 0;
+//=============================
+  // usage();
+  // int 
+  // return 0;
 }
