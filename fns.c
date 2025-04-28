@@ -22,6 +22,63 @@
  * Return value:
  * on success, return 0; else return -1
  */
+// int stream(char *p, int l, FILE *fp){
+//   if (!p || !fp || l < 0) return -1; // basic safety check
+
+//   unsigned char md5_buf[MD5_DIGEST_LENGTH]; // holds current MD5 hash (16 bytes)
+
+//   // Initialize the MD5 state from the passphrase
+//   MD5((unsigned char *)p, strlen(p), md5_buf);
+
+//   int counter = 0;
+//   int written = 0;
+
+//   // Compute the size of the temporary buffer
+//   int passphrase_len = strlen(p);
+//   int temp_len = MD5_DIGEST_LENGTH + 2 + passphrase_len; // md5 + "00" + passphrase
+//   char *s = (char *)malloc(temp_len + 1); // +1 for null terminator
+//   if (!s) return -1;
+
+//   while (written < l) {
+//       // Build string: [md5_buf][2-digit counter][passphrase]
+//       sprintf(&s[MD5_DIGEST_LENGTH], "%02d%s", counter, p); // write to s[16..]
+//       memcpy(s, md5_buf, MD5_DIGEST_LENGTH);                // write md5_buf to s[0..15]
+
+//       // Hash the whole buffer
+//       MD5((unsigned char *)s, temp_len, md5_buf); // md5_buf is updated
+
+//       // Write first 8 bytes of new md5 to output
+//       int bytes_to_write = (l - written < 8) ? (l - written) : 8;
+//       if (fwrite(md5_buf, 1, bytes_to_write, fp) != bytes_to_write) {
+//           free(s);
+//           return -1;
+//       }
+
+//       written += bytes_to_write;
+//       counter = (counter + 1) % 100;
+//   }
+
+//   free(s);
+//   return 0; // FIXME
+// }
+
+int write_pbm(const char *filename, int width, int height, int *pixels) {
+  FILE *fp = fopen(filename, "w");
+  if (!fp) {
+      perror("Failed to open output file");
+      return -1;
+  }
+  fprintf(fp, "P1\n%d %d\n", width, height);
+  for (int i = 0; i < width * height; i++) {
+      fprintf(fp, "%d ", pixels[i]);
+      if ((i + 1) % width == 0) {
+          fprintf(fp, "\n");
+      }
+  }
+  fclose(fp);
+  return 0;
+}
+
 int stream(char *p, int l, FILE *fp){
   if (!p || !fp || l < 0) return -1; // basic safety check
 
@@ -60,23 +117,6 @@ int stream(char *p, int l, FILE *fp){
 
   free(s);
   return 0; // FIXME
-}
-
-int write_pbm(const char *filename, int width, int height, int *pixels) {
-  FILE *fp = fopen(filename, "w");
-  if (!fp) {
-      perror("Failed to open output file");
-      return -1;
-  }
-  fprintf(fp, "P1\n%d %d\n", width, height);
-  for (int i = 0; i < width * height; i++) {
-      fprintf(fp, "%d ", pixels[i]);
-      if ((i + 1) % width == 0) {
-          fprintf(fp, "\n");
-      }
-  }
-  fclose(fp);
-  return 0;
 }
 
 /*

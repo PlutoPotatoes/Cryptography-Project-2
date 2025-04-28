@@ -19,33 +19,42 @@ void usage(){
 }
 
 
-int main(int argc, char *argv[]){
-  char *passphrase = "test123";
-  int num_bytes = 64;  // Number of bytes to generate
+int main(int argc, char *argv[]) {
+  if (argc < 2) usage();
 
-  if(argv[0]=="stream"){
-    printf("dawg");
-  }else if (argv[0]=="encrypt")
-  {
-    /* code */
-  }else if (argv[0]=="merge")
-  {
-    /* code */
-  }else if (argv[0]=="decrypt")
-  {
-    /* code */
+  if (strcmp(argv[1], "stream") == 0) {
+      char *p = NULL;
+      int l = -1;
+
+      for (int i = 2; i < argc; ++i) {
+          if (strncmp(argv[i], "-p=", 3) == 0) p = argv[i] + 3;
+          else if (strncmp(argv[i], "-l=", 3) == 0) l = atoi(argv[i] + 3);
+      }
+
+      if (!p || l <= 0) usage();
+
+      if (stream(p, l, stdout) != 0) {
+          fprintf(stderr, "Stream generation failed.\n");
+          return 1;
+      }
+      return 0;
   }
-  
-  FILE *input = fopen(argv[1], "rb");
-  FILE *cypher1 = fopen(argv[2], "rb+");
-  FILE *cypher2 = fopen(argv[3], "rb+");
-  FILE *fp = fopen("stream_output.bin", "wb");
 
-  fclose(fp);
-  printf("Stream output written to stream_output.bin\n");
+  else if (strcmp(argv[1], "encrypt") == 0) {
+      // placeholder: you will implement this
+  }
+
+  else if (strcmp(argv[1], "merge") == 0) {
+      // placeholder: you will implement this
+  }
+
+  else if (strcmp(argv[1], "decrypt") == 0) {
+      // placeholder: you will implement this
+  }
+
+  else {
+      usage();
+  }
+
   return 0;
-//=============================
-  // usage();
-  // int 
-  // return 0;
 }
