@@ -25,7 +25,7 @@ int stream(char *p, int l, FILE *fp){
   if (!p || !fp || l < 0) return -1; // basic safety check
 
   unsigned char md5_buf[MD5_DIGEST_LENGTH]; // holds current MD5 hash (16 bytes)
-
+  
   // Initialize the MD5 state from the passphrase
   MD5((unsigned char *)p, strlen(p), md5_buf);
 

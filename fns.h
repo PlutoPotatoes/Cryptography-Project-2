@@ -52,4 +52,8 @@ int merge(FILE *fp1, FILE *fp2);
  */
 int decrypt(FILE *fp);
 
+
+void generate_cyper(unsigned char *input, unsigned char *cypher1,unsigned char *cypher2);
+
+
 #endif
