@@ -119,22 +119,22 @@ int stream(char *p, int l, FILE *fp){
   return 0; // FIXME
 }
 
-int write_pbm(const char *filename, int width, int height, int *pixels) {
-  FILE *fp = fopen(filename, "w");
-  if (!fp) {
-      perror("Failed to open output file");
-      return -1;
-  }
-  fprintf(fp, "P4\n%d %d\n", width, height);
-  for (int i = 0; i < width * height; i++) {
-      fprintf(fp, "%d ", pixels[i]);
-      if ((i + 1) % width == 0) {
-          fprintf(fp, "\n");
-      }
-  }
-  fclose(fp);
-  return 0;
-}
+// int write_pbm(const char *filename, int width, int height, int *pixels) {
+//   FILE *fp = fopen(filename, "w");
+//   if (!fp) {
+//       perror("Failed to open output file");
+//       return -1;
+//   }
+//   fprintf(fp, "P4\n%d %d\n", width, height);
+//   for (int i = 0; i < width * height; i++) {
+//       fprintf(fp, "%d ", pixels[i]);
+//       if ((i + 1) % width == 0) {
+//           fprintf(fp, "\n");
+//       }
+//   }
+//   fclose(fp);
+//   return 0;
+// }
 
 /*
  * Encrypts an input PBM file with the simple stream cipher based on 4x data expension visual cryptography by Naor and Shamir
@@ -219,8 +219,10 @@ int encrypt(char *p, char *out, FILE *fp){
 
       }
   }
-  char out1 = out;
-  char out2 = out;
+  char out1[256], out2[256];
+  strcpy(out1, out);
+  strcpy(out2, out);
+
   strcat(out1, ".1.pbm");
   strcat(out1, ".2.pbm");
 
@@ -274,8 +276,8 @@ int merge(FILE *fp1, FILE *fp2, char *outName){
   }
   fprintf(out, "P4\n%d %d\n", width1, height1);
   for(int i = 1; i<=width1*height1; i++){
-    int *pix1;
-    int *pix2;
+    int pix1;
+    int pix2;
     fscanf(fp1, "%1d", &pix1);
     fscanf(fp2, "%1d", &pix2);
     if(pix1 == pix2){
@@ -300,6 +302,71 @@ int merge(FILE *fp1, FILE *fp2, char *outName){
  * on success, return 0; else return -1
  */
 int decrypt(FILE *fp){
-   return 0; // FIXME
+  char magic[3];
+  int width, height;
+
+  // Read magic number
+  if (fscanf(fp, "%2s", magic) != 1 || strcmp(magic, "P4") != 0) {
+      fprintf(stderr, "Invalid PBM file.\n");
+      return -1;
+  }
+
+  // Read width and height
+  if (fscanf(fp, "%d %d", &width, &height) != 2) {
+      fprintf(stderr, "Failed to read width and height.\n");
+      return -1;
+  }
+  fgetc(fp); // skip newline after header
+
+  int row_bytes = (width + 7) / 8;
+  unsigned char *row_buf = malloc(row_bytes);
+  if (!row_buf) return -1;
+
+  // Prepare output PBM header (half size)
+  printf("P4\n%d %d\n", width / 2, height / 2);
+
+  // Process rows two at a time
+  for (int row = 0; row < height; row += 2) {
+      unsigned char *row_buf2 = malloc(row_bytes);
+      if (!row_buf2) return -1;
+
+      if (fread(row_buf, 1, row_bytes, fp) != row_bytes) break;
+      if (fread(row_buf2, 1, row_bytes, fp) != row_bytes) break;
+
+      for (int col = 0; col < width; col += 2) {
+          int byte_index1 = col / 8;
+          int bit_index1 = 7 - (col % 8);
+          int byte_index2 = (col + 1) / 8;
+          int bit_index2 = 7 - ((col + 1) % 8);
+
+          int top_left = (row_buf[byte_index1] >> bit_index1) & 1;
+          int top_right = (row_buf[byte_index2] >> bit_index2) & 1;
+          int bottom_left = (row_buf2[byte_index1] >> bit_index1) & 1;
+          int bottom_right = (row_buf2[byte_index2] >> bit_index2) & 1;
+
+          int black_count = top_left + top_right + bottom_left + bottom_right;
+
+          int pixel_value = (black_count >= 3) ? 1 : 0; // majority black → black pixel
+
+          // Write to stdout (1 pixel at a time → pack 8 bits into a byte)
+          static int bit_pos = 7;
+          static unsigned char out_byte = 0;
+          if (pixel_value) out_byte |= (1 << bit_pos);
+          bit_pos--;
+          if (bit_pos < 0) {
+              putchar(out_byte);
+              out_byte = 0;
+              bit_pos = 7;
+          }
+      }
+
+      free(row_buf2);
+  }
+
+  // Flush last byte if needed
+  // if (bit_pos != 7) putchar(out_byte);
+
+  // free(row_buf);
+  // return 0;
 }
 
