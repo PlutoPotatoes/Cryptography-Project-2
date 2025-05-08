@@ -18,32 +18,15 @@ void usage(){
   exit(1);
 }
 
+
 int main(int argc, char *argv[]){
   char *passphrase = "test123";
   int num_bytes = 64;  // Number of bytes to generate
-  int width, height, size;
 
   FILE *input = fopen(argv[1], "rb");
   FILE *cypher1 = fopen(argv[2], "rb+");
   FILE *cypher2 = fopen(argv[3], "rb+");
   FILE *fp = fopen("stream_output.bin", "wb");
-
-  fscanf(input, "%d %d", &width, &height);
-  size = width*height;
-
-  printf("%d", size);
-
-
-  if (!fp) {
-      perror("Error opening file");
-      return 1;
-  }
-
-  if (stream(passphrase, num_bytes, fp) != 0) {
-      fprintf(stderr, "Stream generation failed.\n");
-      fclose(fp);
-      return 1;
-  }
 
   fclose(fp);
   printf("Stream output written to stream_output.bin\n");

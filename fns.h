@@ -31,6 +31,8 @@ int stream(char *p, int l, FILE *fp);
  */
 int encrypt(char *p, char *out, FILE *fp);
 
+// writes encrypted PBM data to a file
+int write_pbm(const char *filename, int width, int height, int *pixels);
 /*
  * Merge two input encrypted PBM files
  * Parameters:
@@ -51,5 +53,7 @@ int merge(FILE *fp1, FILE *fp2);
  * on success, return 0; else return -1
  */
 int decrypt(FILE *fp);
+
+
 
 #endif
