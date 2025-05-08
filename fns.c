@@ -62,6 +62,23 @@ int stream(char *p, int l, FILE *fp){
   return 0; // FIXME
 }
 
+int write_pbm(const char *filename, int width, int height, int *pixels) {
+  FILE *fp = fopen(filename, "w");
+  if (!fp) {
+      perror("Failed to open output file");
+      return -1;
+  }
+  fprintf(fp, "P1\n%d %d\n", width, height);
+  for (int i = 0; i < width * height; i++) {
+      fprintf(fp, "%d ", pixels[i]);
+      if ((i + 1) % width == 0) {
+          fprintf(fp, "\n");
+      }
+  }
+  fclose(fp);
+  return 0;
+}
+
 /*
  * Encrypts an input PBM file with the simple stream cipher based on 4x data expension visual cryptography by Naor and Shamir
  * Parameters:
@@ -160,28 +177,10 @@ int encrypt(char *p, char *out, FILE *fp){
   free(pixels);
   free(share1);
   free(share2);
-  free(expandedWidth);
-  free(width);
-  free(height);
   return 0;
 }
 
-int write_pbm(const char *filename, int width, int height, int *pixels) {
-  FILE *fp = fopen(filename, "w");
-  if (!fp) {
-      perror("Failed to open output file");
-      return -1;
-  }
-  fprintf(fp, "P1\n%d %d\n", width, height);
-  for (int i = 0; i < width * height; i++) {
-      fprintf(fp, "%d ", pixels[i]);
-      if ((i + 1) % width == 0) {
-          fprintf(fp, "\n");
-      }
-  }
-  fclose(fp);
-  return 0;
-}
+
 
 /*
  * Merge two input encrypted PBM files

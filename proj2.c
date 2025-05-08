@@ -23,6 +23,19 @@ int main(int argc, char *argv[]){
   char *passphrase = "test123";
   int num_bytes = 64;  // Number of bytes to generate
 
+  if(argv[0]=="stream"){
+    printf("dawg");
+  }else if (argv[0]=="encrypt")
+  {
+    /* code */
+  }else if (argv[0]=="merge")
+  {
+    /* code */
+  }else if (argv[0]=="decrypt")
+  {
+    /* code */
+  }
+  
   FILE *input = fopen(argv[1], "rb");
   FILE *cypher1 = fopen(argv[2], "rb+");
   FILE *cypher2 = fopen(argv[3], "rb+");
