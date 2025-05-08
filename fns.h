@@ -42,7 +42,7 @@ int write_pbm(const char *filename, int width, int height, int *pixels);
  * Return value:
  * on success, return 0; else return -1
  */
-int merge(FILE *fp1, FILE *fp2);
+int merge(FILE *fp1, FILE *fp2, char *outName);
 
 /*
  * Decrypt either stdin or a specified merged PBM input file

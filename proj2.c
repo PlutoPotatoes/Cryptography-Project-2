@@ -31,18 +31,24 @@ int main(int argc, char *argv[]){
     fclose(key);
   }else if (strcmp(argv[1], "encrypt") == 0)
   {
+    FILE *input = fopen(argv[1], "rb");
+    char *password = argv[2];
+    FILE *cypher1 = fopen(argv[2], "rb+");
+    FILE *cypher2 = fopen(argv[3], "rb+");
+    encrypt(password, cypher1, input);
     /* code */
   }else if (strcmp(argv[1], "merge") == 0)
   {
+    FILE *cypher1 = fopen(argv[2], "rb+");
+    FILE *cypher2 = fopen(argv[3], "rb+");
+    char *outName = argv[4];
+    merge(cypher1, cypher2, outName);
     /* code */
   }else if (strcmp(argv[1], "decrypt") ==0)
   {
     /* code */
   }
   
-  FILE *input = fopen(argv[1], "rb");
-  FILE *cypher1 = fopen(argv[2], "rb+");
-  FILE *cypher2 = fopen(argv[3], "rb+");
 
   return 0;
 //=============================

@@ -68,7 +68,7 @@ int write_pbm(const char *filename, int width, int height, int *pixels) {
       perror("Failed to open output file");
       return -1;
   }
-  fprintf(fp, "P1\n%d %d\n", width, height);
+  fprintf(fp, "P4\n%d %d\n", width, height);
   for (int i = 0; i < width * height; i++) {
       fprintf(fp, "%d ", pixels[i]);
       if ((i + 1) % width == 0) {
@@ -162,11 +162,15 @@ int encrypt(char *p, char *out, FILE *fp){
 
       }
   }
+  char out1 = out;
+  char out2 = out;
+  strcat(out1, ".1.pbm");
+  strcat(out1, ".2.pbm");
 
   // Write the shares to output files
   // FIXME DO i need 2 output files??
-  if (write_pbm(out, width * 2, height * 2, share1) == -1 ||
-      write_pbm(out, width * 2, height * 2, share2) == -1) {
+  if (write_pbm(out1, width * 2, height * 2, share1) == -1 ||
+      write_pbm(out2, width * 2, height * 2, share2) == -1) {
       free(pixels);
       free(share1);
       free(share2);
@@ -191,8 +195,43 @@ int encrypt(char *p, char *out, FILE *fp){
  * Return value:
  * on success, return 0; else return -1
  */
-int merge(FILE *fp1, FILE *fp2){
-  return 0; // FIXME
+int merge(FILE *fp1, FILE *fp2, char *outName){
+  int width1, height1;
+  if (fscanf(fp1, "P4\n%d %d\n", &width1, &height1) != 2) {
+      fprintf(stderr, "Invalid PBM header\n");
+      return -1;
+  }
+  int width2, height2;
+  if (fscanf(fp2, "P4\n%d %d\n", &width2, &height2) != 2) {
+      fprintf(stderr, "Invalid PBM header\n");
+      return -1;
+  }
+  if(width1 != width2 || height1 != height2){
+    printf(stderr, "Input PBM files are not the same size");
+  }
+  
+  FILE *out = fopen(outName, "w");
+  if (!out) {
+      perror("Failed to open output file");
+      return -1;
+  }
+  fprintf(out, "P4\n%d %d\n", width1, height1);
+  for(int i = 1; i<=width1*height1; i++){
+    int *pix1;
+    int *pix2;
+    fscanf(fp1, "%1d", &pix1);
+    fscanf(fp2, "%1d", &pix2);
+    if(pix1 == pix2){
+      fprintf(out, "%d", 0);
+    }else{
+      fprintf(out, "%d", 1);
+    }
+  }
+
+  fclose(out);
+  return 0;
+
+
 }
 
 /*
