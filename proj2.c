@@ -19,42 +19,36 @@ void usage(){
 }
 
 
-int main(int argc, char *argv[]) {
-  if (argc < 2) usage();
+int main(int argc, char *argv[]){
+  char *passphrase = "test123";
+  int num_bytes = 64;  // Number of bytes to generate
 
-  if (strcmp(argv[1], "stream") == 0) {
-      char *p = NULL;
-      int l = -1;
-
-      for (int i = 2; i < argc; ++i) {
-          if (strncmp(argv[i], "-p=", 3) == 0) p = argv[i] + 3;
-          else if (strncmp(argv[i], "-l=", 3) == 0) l = atoi(argv[i] + 3);
-      }
-
-      if (!p || l <= 0) usage();
-
-      if (stream(p, l, stdout) != 0) {
-          fprintf(stderr, "Stream generation failed.\n");
-          return 1;
-      }
-      return 0;
+  if(strcmp(argv[1], "stream") == 0){
+    FILE *key = fopen(argv[4], "wb");
+    char *password = argv[2];
+    int len = (int)argv[3];
+    stream(password, len, key);
+    fclose(key);
+  }else if (strcmp(argv[1], "encrypt") == 0)
+  {
+    FILE *input = fopen(argv[1], "rb");
+    char *password = argv[2];
+    FILE *cypher1 = fopen(argv[2], "rb+");
+    FILE *cypher2 = fopen(argv[3], "rb+");
+    encrypt(password, cypher1, input);
+    /* code */
+  }else if (strcmp(argv[1], "merge") == 0)
+  {
+    FILE *cypher1 = fopen(argv[2], "rb+");
+    FILE *cypher2 = fopen(argv[3], "rb+");
+    char *outName = argv[4];
+    merge(cypher1, cypher2, outName);
+    /* code */
+  }else if (strcmp(argv[1], "decrypt") ==0)
+  {
+    /* code */
   }
-
-  else if (strcmp(argv[1], "encrypt") == 0) {
-      // placeholder: you will implement this
-  }
-
-  else if (strcmp(argv[1], "merge") == 0) {
-      // placeholder: you will implement this
-  }
-
-  else if (strcmp(argv[1], "decrypt") == 0) {
-      // placeholder: you will implement this
-  }
-
-  else {
-      usage();
-  }
+  
 
   return 0;
 }
