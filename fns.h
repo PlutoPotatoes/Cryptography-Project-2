@@ -54,74 +54,8 @@ int merge(FILE *fp1, FILE *fp2, char *outName);
  */
 
 
-int decrypt(FILE *fp) {
-    char magic[3];
-    int width, height;
+int decrypt(FILE *fp);
 
-    // Read magic number
-    if (fscanf(fp, "%2s", magic) != 1 || strcmp(magic, "P4") != 0) {
-        fprintf(stderr, "Invalid PBM file.\n");
-        return -1;
-    }
-
-    // Read width and height
-    if (fscanf(fp, "%d %d", &width, &height) != 2) {
-        fprintf(stderr, "Failed to read width and height.\n");
-        return -1;
-    }
-    fgetc(fp); // skip newline after header
-
-    int row_bytes = (width + 7) / 8;
-    unsigned char *row_buf = malloc(row_bytes);
-    if (!row_buf) return -1;
-
-    // Prepare output PBM header (half size)
-    printf("P4\n%d %d\n", width / 2, height / 2);
-
-    // Process rows two at a time
-    for (int row = 0; row < height; row += 2) {
-        unsigned char *row_buf2 = malloc(row_bytes);
-        if (!row_buf2) return -1;
-
-        if (fread(row_buf, 1, row_bytes, fp) != row_bytes) break;
-        if (fread(row_buf2, 1, row_bytes, fp) != row_bytes) break;
-
-        for (int col = 0; col < width; col += 2) {
-            int byte_index1 = col / 8;
-            int bit_index1 = 7 - (col % 8);
-            int byte_index2 = (col + 1) / 8;
-            int bit_index2 = 7 - ((col + 1) % 8);
-
-            int top_left = (row_buf[byte_index1] >> bit_index1) & 1;
-            int top_right = (row_buf[byte_index2] >> bit_index2) & 1;
-            int bottom_left = (row_buf2[byte_index1] >> bit_index1) & 1;
-            int bottom_right = (row_buf2[byte_index2] >> bit_index2) & 1;
-
-            int black_count = top_left + top_right + bottom_left + bottom_right;
-
-            int pixel_value = (black_count >= 3) ? 1 : 0; // majority black → black pixel
-
-            // Write to stdout (1 pixel at a time → pack 8 bits into a byte)
-            static int bit_pos = 7;
-            static unsigned char out_byte = 0;
-            if (pixel_value) out_byte |= (1 << bit_pos);
-            bit_pos--;
-            if (bit_pos < 0) {
-                putchar(out_byte);
-                out_byte = 0;
-                bit_pos = 7;
-            }
-        }
-
-        free(row_buf2);
-    }
-
-    // Flush last byte if needed
-    // if (bit_pos != 7) putchar(out_byte);
-
-    // free(row_buf);
-    // return 0;
-}
 
 
 
