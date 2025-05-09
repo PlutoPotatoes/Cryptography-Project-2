@@ -12,72 +12,43 @@
 #include <openssl/md5.h> 
 
 
-/*
- * a simple stream cipher utilizing MD5 Message-Digest Algorithm
- * Parameters:
- * p: pointer to locate the pass phrase
- * l: number of bytes to output
- * fp: file pointer pointing to the specified temporary file or stdout
- *
- * Return value:
- * on success, return 0; else return -1
- */
-// int stream(char *p, int l, FILE *fp){
-//   if (!p || !fp || l < 0) return -1; // basic safety check
-
-//   unsigned char md5_buf[MD5_DIGEST_LENGTH]; // holds current MD5 hash (16 bytes)
-
-//   // Initialize the MD5 state from the passphrase
-//   MD5((unsigned char *)p, strlen(p), md5_buf);
-
-//   int counter = 0;
-//   int written = 0;
-
-//   // Compute the size of the temporary buffer
-//   int passphrase_len = strlen(p);
-//   int temp_len = MD5_DIGEST_LENGTH + 2 + passphrase_len; // md5 + "00" + passphrase
-//   char *s = (char *)malloc(temp_len + 1); // +1 for null terminator
-//   if (!s) return -1;
-
-//   while (written < l) {
-//       // Build string: [md5_buf][2-digit counter][passphrase]
-//       sprintf(&s[MD5_DIGEST_LENGTH], "%02d%s", counter, p); // write to s[16..]
-//       memcpy(s, md5_buf, MD5_DIGEST_LENGTH);                // write md5_buf to s[0..15]
-
-//       // Hash the whole buffer
-//       MD5((unsigned char *)s, temp_len, md5_buf); // md5_buf is updated
-
-//       // Write first 8 bytes of new md5 to output
-//       int bytes_to_write = (l - written < 8) ? (l - written) : 8;
-//       if (fwrite(md5_buf, 1, bytes_to_write, fp) != bytes_to_write) {
-//           free(s);
-//           return -1;
-//       }
-
-//       written += bytes_to_write;
-//       counter = (counter + 1) % 100;
-//   }
-
-//   free(s);
-//   return 0; // FIXME
-// }
 
 int write_pbm(const char *filename, int width, int height, int *pixels) {
-  FILE *fp = fopen(filename, "w");
-  if (!fp) {
-      perror("Failed to open output file");
-      return -1;
-  }
-  fprintf(fp, "P1\n%d %d\n", width, height);
-  for (int i = 0; i < width * height; i++) {
-      fprintf(fp, "%d ", pixels[i]);
-      if ((i + 1) % width == 0) {
-          fprintf(fp, "\n");
-      }
-  }
-  fclose(fp);
-  return 0;
+    FILE *fp = fopen(filename, "wb");  // binary mode!
+    if (!fp) {
+        perror("Failed to open output file");
+        return -1;
+    }
+
+    fprintf(fp, "P4\n%d %d\n", width, height);
+
+    int row_bytes = (width + 7) / 8;
+    unsigned char byte = 0;
+
+    for (int y = 0; y < height; y++) {
+        int bit_index = 0;
+        byte = 0;
+        for (int x = 0; x < width; x++) {
+            byte = (byte << 1) | (pixels[y * width + x] ? 0 : 1);  // 1=black, 0=white (P4)
+            bit_index++;
+
+            if (bit_index == 8) {
+                fputc(byte, fp);
+                byte = 0;
+                bit_index = 0;
+            }
+        }
+        if (bit_index > 0) {  // pad remaining bits
+            byte <<= (8 - bit_index);
+            fputc(byte, fp);
+        }
+    }
+
+    fclose(fp);
+    return 0;
 }
+
+
 
 int stream(char *p, int l, FILE *fp){
   if (!p || !fp || l < 0) return -1; // basic safety check
@@ -119,129 +90,128 @@ int stream(char *p, int l, FILE *fp){
   return 0; // FIXME
 }
 
-// int write_pbm(const char *filename, int width, int height, int *pixels) {
-//   FILE *fp = fopen(filename, "w");
-//   if (!fp) {
-//       perror("Failed to open output file");
-//       return -1;
-//   }
-//   fprintf(fp, "P4\n%d %d\n", width, height);
-//   for (int i = 0; i < width * height; i++) {
-//       fprintf(fp, "%d ", pixels[i]);
-//       if ((i + 1) % width == 0) {
-//           fprintf(fp, "\n");
-//       }
-//   }
-//   fclose(fp);
-//   return 0;
-// }
 
-/*
- * Encrypts an input PBM file with the simple stream cipher based on 4x data expension visual cryptography by Naor and Shamir
- * Parameters:
- * p: pointer to locate the pass phrase
- * out: pointer to locate the output filename string
- * fp: file pointer pointing to the specified input file or stdin
- *
- * Return value:
- * on success, return 0; else return -1
- */
-int encrypt(char *p, char *out, FILE *fp){
-  /*
-  scan file header for width and height:
-    P4
-    WidthInt HeightInt
-  */
-  int width, height;
-  if (fscanf(fp, "P4\n%d %d\n", &width, &height) != 2) {
-      fprintf(stderr, "Invalid PBM header\n");
-      return -1;
-  }
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <openssl/md5.h>
 
-  //create array to hold pixels
-  int *pixels = malloc(width * height * sizeof(int));
+int encrypt(char *p, char *out, FILE *fp) {
+    char magic[3];
+    int width, height;
 
-  //get each pixel from the PBM file 
-  for (int i = 0; i < width * height; i++) {
-      if (fscanf(fp, "%1d", &pixels[i]) != 1) {
-          fprintf(stderr, "Why did you pass me invalid pixels?? cmon man\n");
-          free(pixels);
-          return -1;
-      }
-  }
+    // Read and check PBM magic number
+    if (fscanf(fp, "%2s", magic) != 1 || strcmp(magic, "P4") != 0) {
+        fprintf(stderr, "Invalid PBM magic\n");
+        return -1;
+    }
 
-  // create each half of the key
-  // size*4 because of the 4x expansion factor
-  int *share1 = malloc(4 * width * height * sizeof(int));
-  int *share2 = malloc(4 * width * height * sizeof(int));
-  int expandedWidth = width*2;
+    // Read width and height
+    if (fscanf(fp, "%d %d", &width, &height) != 2) {
+        fprintf(stderr, "Failed to read PBM width and height\n");
+        return -1;
+    }
+    fgetc(fp); // skip newline after header
 
+    int row_bytes = (width + 7) / 8;
+    unsigned char *row_buf = malloc(row_bytes);
+    if (!row_buf) return -1;
 
-  for (int i = 0; i < width * height; i++) {
-      int shareIndex = i*2;
-      switch(pixels[i]){
-        //white pixel, check key and write to shares
-        case 0:
-          if(p[i]==1){
-            //write share1 and share 2 to the same values
-            //XOR will reveal a white pixel
-            share1[shareIndex], share1[shareIndex+expandedWidth+1] = 1;
-            share1[shareIndex+1], share1[shareIndex+expandedWidth] = 0;
-            share2[shareIndex], share2[shareIndex+expandedWidth+1] = 1;
-            share2[shareIndex+1], share2[shareIndex+expandedWidth] = 0;
-          }else{
-            //write share1 and share 2 to the same values
-            //XOR will reveal a white pixel
-            share1[shareIndex], share1[shareIndex+expandedWidth+1] = 0;
-            share1[shareIndex+1], share1[shareIndex+expandedWidth] = 1;
-            share2[shareIndex], share2[shareIndex+expandedWidth+1] = 0;
-            share2[shareIndex+1], share2[shareIndex+expandedWidth] = 1;
-          }
-          break;
-        //black pixel, check key and write to shares
-        case 1:
-          if(p[i]==1){
-            //write share1 and share 2 to opposite values
-            //XOR will reveal a black pixel
-            share1[shareIndex], share1[shareIndex+expandedWidth+1] = 1;
-            share1[shareIndex+1], share1[shareIndex+expandedWidth] = 0;
-            share2[shareIndex], share2[shareIndex+expandedWidth+1] = 0;
-            share2[shareIndex+1], share2[shareIndex+expandedWidth] = 1;
-          }else{
-            //write share1 and share 2 to opposite values
-            //XOR will reveal a black pixel
-            share1[shareIndex], share1[shareIndex+expandedWidth+1] = 0;
-            share1[shareIndex+1], share1[shareIndex+expandedWidth] = 1;
-            share2[shareIndex], share2[shareIndex+expandedWidth+1] = 1;
-            share2[shareIndex+1], share2[shareIndex+expandedWidth] = 0;
-          }
-          break;
+    int expW = width * 2, expH = height * 2;
+    int exp_row_bytes = (expW + 7) / 8;
 
-      }
-  }
-  char out1[256], out2[256];
-  strcpy(out1, out);
-  strcpy(out2, out);
+    unsigned char *packed1 = calloc(expH * exp_row_bytes, 1);
+    unsigned char *packed2 = calloc(expH * exp_row_bytes, 1);
+    if (!packed1 || !packed2) return -1;
 
-  strcat(out1, ".1.pbm");
-  strcat(out1, ".2.pbm");
+    FILE *key_fp = tmpfile();
+    if (!key_fp) return -1;
+    stream(p, width * height, key_fp);
+    rewind(key_fp);
 
-  // Write the shares to output files
-  // FIXME DO i need 2 output files??
-  if (write_pbm(out1, width * 2, height * 2, share1) == -1 ||
-      write_pbm(out2, width * 2, height * 2, share2) == -1) {
-      free(pixels);
-      free(share1);
-      free(share2);
-      fprintf(stderr, "Write to PBM Failed");
-      return -1;
-  }
+    unsigned char key_byte = 0;
+    int bits_left = 0;
 
-  free(pixels);
-  free(share1);
-  free(share2);
-  return 0;
+    for (int r = 0; r < height; ++r) {
+        if (fread(row_buf, 1, row_bytes, fp) != row_bytes) {
+            fprintf(stderr, "Failed to read row\n");
+            free(row_buf); free(packed1); free(packed2);
+            fclose(key_fp);
+            return -1;
+        }
+
+        for (int c = 0; c < width; ++c) {
+            int byte_idx = c / 8;
+            int bit_idx = 7 - (c % 8);
+            int pixel = (row_buf[byte_idx] >> bit_idx) & 1;
+
+            if (bits_left == 0) {
+              if (fread(&key_byte, 1, 1, key_fp) != 1) {
+                fprintf(stderr, "Failed to read key byte\n");
+                
+            }
+            bits_left = 8;
+            
+                bits_left = 8;
+            }
+            int key_bit = (key_byte >> 7) & 1;
+            key_byte <<= 1;
+            bits_left--;
+
+            // Calculate expanded positions
+            int er = r * 2, ec = c * 2;
+
+            // Define patterns
+            unsigned char patA[2][2] = {{1,0},{0,1}};
+            unsigned char patB[2][2] = {{0,1},{1,0}};
+
+            unsigned char (*pat1)[2], (*pat2)[2];
+            if (pixel == 0) { // white
+                pat1 = pat2 = (key_bit) ? patA : patB;
+            } else { // black
+                pat1 = (key_bit) ? patA : patB;
+                pat2 = (key_bit) ? patB : patA;
+            }
+
+            // Set bits in packed1 and packed2
+            for (int dr = 0; dr < 2; ++dr) {
+                for (int dc = 0; dc < 2; ++dc) {
+                    if (pat1[dr][dc]) 
+                        packed1[(er + dr) * exp_row_bytes + (ec + dc)/8] |= (1 << (7 - (ec + dc)%8));
+                    if (pat2[dr][dc])
+                        packed2[(er + dr) * exp_row_bytes + (ec + dc)/8] |= (1 << (7 - (ec + dc)%8));
+                }
+            }
+        }
+    }
+
+    // Write to output files
+    char out1[256], out2[256];
+    snprintf(out1, sizeof(out1), "%s.1.pbm", out);
+    snprintf(out2, sizeof(out2), "%s.2.pbm", out);
+
+    FILE *fp1 = fopen(out1, "wb");
+    FILE *fp2 = fopen(out2, "wb");
+    if (!fp1 || !fp2) return -1;
+
+    fprintf(fp1, "P4\n%d %d\n", expW, expH);
+    fprintf(fp2, "P4\n%d %d\n", expW, expH);
+
+    fwrite(packed1, 1, exp_row_bytes * expH, fp1);
+    fwrite(packed2, 1, exp_row_bytes * expH, fp2);
+
+    fclose(fp1);
+    fclose(fp2);
+    fclose(key_fp);
+    free(row_buf);
+    free(packed1);
+    free(packed2);
+
+    return 0;
 }
+
+
+
 
 
 
@@ -363,10 +333,5 @@ int decrypt(FILE *fp){
       free(row_buf2);
   }
 
-  // Flush last byte if needed
-  // if (bit_pos != 7) putchar(out_byte);
-
-  // free(row_buf);
-  // return 0;
 }
 
